@@ -24,13 +24,17 @@ type ReactorRule struct {
 	x  CoordRange
 	y  CoordRange
 	z  CoordRange
-	on int
+	on bool
 }
 
 func if_err(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func get_rule_volume(rule ReactorRule) int64 {
+	return (rule.x.max - rule.x.min) * (rule.y.max - rule.y.min) * (rule.z.max - rule.z.min)
 }
 
 func trim_rules(rules []ReactorRule, mask ReactorRule) []ReactorRule {
@@ -56,6 +60,25 @@ func find_overlap(rules []ReactorRule, check ReactorRule) []ReactorRule {
 	return overlap
 }
 
+func total_on(rules []ReactorRule, check ReactorRule) int64 {
+	is_on := get_rule_volume(check)
+
+	if len(rules) < 1 {
+		return is_on
+	} else if len(rules) == 1 {
+		rule := rules[0]
+		rule_volume := get_rule_volume(rule)
+		if rule.on {
+			is_on += rule_volume
+		}
+		for _, o := range find_overlap(rules, check) {
+			is_on -= get_rule_volume(o)
+		}
+	}
+
+	return is_on
+}
+
 func main() {
 	file, err := os.Open("./input.txt")
 	// file, err := os.Open("./sample-input.txt")
@@ -71,9 +94,9 @@ func main() {
 
 	for scanner.Scan() {
 		line := r.FindStringSubmatch(scanner.Text())
-		on := 0
+		on := false
 		if line[1] == "on" {
-			on = 1
+			on = true
 		}
 		x1, _ := strconv.ParseFloat(line[2], 64)
 		x2, _ := strconv.ParseFloat(line[3], 64)
