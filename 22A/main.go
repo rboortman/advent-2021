@@ -27,8 +27,8 @@ func if_err(err error) {
 }
 
 func main() {
-	file, err := os.Open("./input.txt")
-	// file, err := os.Open("./sample-input.txt")
+	// file, err := os.Open("./input.txt")
+	file, err := os.Open("./sample-input.txt")
 	if_err(err)
 	defer file.Close()
 

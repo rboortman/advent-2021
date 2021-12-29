@@ -33,8 +33,15 @@ func if_err(err error) {
 	}
 }
 
+func reverse(rules []ReactorRule) []ReactorRule {
+	for i, j := 0, len(rules)-1; i < j; i, j = i+1, j-1 {
+		rules[i], rules[j] = rules[j], rules[i]
+	}
+	return rules
+}
+
 func get_rule_volume(rule ReactorRule) int64 {
-	return (rule.x.max - rule.x.min) * (rule.y.max - rule.y.min) * (rule.z.max - rule.z.min)
+	return int64(math.Abs(float64((rule.x.max - rule.x.min + 1) * (rule.y.max - rule.y.min + 1) * (rule.z.max - rule.z.min + 1))))
 }
 
 func trim_rules(rules []ReactorRule, mask ReactorRule) []ReactorRule {
@@ -61,19 +68,22 @@ func find_overlap(rules []ReactorRule, check ReactorRule) []ReactorRule {
 }
 
 func total_on(rules []ReactorRule, check ReactorRule) int64 {
-	is_on := get_rule_volume(check)
+	is_on := int64(0)
+	if check.on {
+		is_on = get_rule_volume(check)
+	}
 
-	if len(rules) < 1 {
-		return is_on
-	} else if len(rules) == 1 {
-		rule := rules[0]
-		rule_volume := get_rule_volume(rule)
-		if rule.on {
-			is_on += rule_volume
+	if len(rules) > 0 {
+		total_sub := total_on(rules[1:], rules[0])
+		total_overlap_sub := int64(0)
+		overlap := find_overlap(rules, check)
+		if len(overlap) > 0 {
+			trimmed := trim_rules(overlap, check)
+			total_overlap_sub = total_on(trimmed[1:], trimmed[0])
 		}
-		for _, o := range find_overlap(rules, check) {
-			is_on -= get_rule_volume(o)
-		}
+
+		is_on += total_sub
+		is_on -= total_overlap_sub
 	}
 
 	return is_on
@@ -118,18 +128,20 @@ func main() {
 	turned_on := int64(0)
 	for i, rule := range rules {
 		overlap := find_overlap(rules[:i], rule)
+		trimmed := reverse(trim_rules(overlap, rule))
 
-		// fmt.Printf("%+v\n", overlap)
-		// fmt.Println(len(overlap))
-		if len(overlap) > 0 {
-			trimmed := trim_rules(overlap, rule)
-			count := int64(0)
-			for _, t := range trimmed {
-				count += (t.x.max - t.x.min) * (t.y.max - t.y.min) * (t.z.max - t.z.min)
-			}
-			fmt.Println(count)
+		if rule.on {
+			turned_on += get_rule_volume(rule)
 		}
+
+		if len(trimmed) == 1 && trimmed[0].on {
+			turned_on -= get_rule_volume(trimmed[0])
+		} else if len(trimmed) > 1 {
+			turned_on -= total_on(trimmed[1:], trimmed[0])
+		}
+
 	}
 
+	// fmt.Printf("%+v\n", rules)
 	fmt.Println(turned_on)
 }
